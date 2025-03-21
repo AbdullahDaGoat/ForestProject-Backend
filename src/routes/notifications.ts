@@ -7,10 +7,14 @@ const router = {
   triggerNotification: express.Router()
 };
 
-// Configure your VAPID keys
-// In production, place them in environment variables or a secure location
-const VAPID_PUBLIC_KEY = 'BMIlphB5UNplAcbs-4nVB9eHiIyawSQbd65fu8jm52PN4K5D_VYOhbwjcHDoCfXc02zl8xSYB0Rto8_zc6r3Qcs';
-const VAPID_PRIVATE_KEY = 'nHsNJydV8QDe8QGAJt3snIsInFYj08sf9saZ5hBCGaA';
+// Read VAPID keys from environment variables
+const VAPID_PUBLIC_KEY = 'BFvwfwSPtFBlC6QOB8h2RcapVKbn0PL3Yxj4J96pQIwkWu4fWTjgqv1eJ9N8lfk4sMPVKZkt19BCI49kMuQcpns';
+const VAPID_PRIVATE_KEY = 'rL-l2arV293DEb_l99_23OugcAhaY4wVwwAafBnFM2w';
+
+if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+  console.error('VAPID keys are not defined! Please set them in your environment variables.');
+  process.exit(1);
+}
 
 webpush.setVapidDetails(
   'mailto:abdullahaviator13@gmail.com',
@@ -39,8 +43,7 @@ router.triggerNotification.post('/', async (req: Request, res: Response) => {
 
     const subs = getSubscriptions();
     const sendPromises = subs.map((sub) =>
-      webpush
-        .sendNotification(sub, payload)
+      webpush.sendNotification(sub, payload)
         .catch((err) => console.error('Error sending notification:', err))
     );
 
