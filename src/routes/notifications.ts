@@ -39,7 +39,6 @@ router.saveSubscription.post('/', async (req: Request, res: Response) => {
 router.triggerNotification.post('/', async (req: Request, res: Response) => {
   try {
     // Destructure the fields from the request body.
-    // These fields will be used to build the payload sent to clients.
     const {
       title,
       body,
@@ -49,20 +48,43 @@ router.triggerNotification.post('/', async (req: Request, res: Response) => {
       tag,
       requireInteraction,
       vibrate,
-      actions
+      actions,
+      image,
+      silent,
+      timestamp,
+      color
     } = req.body;
 
-    // Build the payload using defaults for any missing fields.
+    // Build the enhanced payload
     const payload = JSON.stringify({
       title: title || 'Environmental Alert',
       body: body || 'New environmental alert detected!',
       icon: icon || '/icons/icon-192x192.png',
-      badge: badge || '/icons/icon-72x72.png',
+      badge: badge || '/icons/badge-72x72.png',
       tag: tag || 'environmental-alert',
       requireInteraction: requireInteraction !== undefined ? requireInteraction : true,
       vibrate: vibrate || [100, 50, 100, 50, 100, 50, 200],
-      actions: actions || [{ action: 'view', title: 'View Details' }],
-      data: data || { url: '/' }
+      actions: actions || [
+        { action: 'view', title: 'View Details', icon: '/icons/view-icon.png' },
+        { action: 'dismiss', title: 'Dismiss', icon: '/icons/dismiss-icon.png' }
+      ],
+      // Enhanced properties for more beautiful notifications
+      image: image || '/images/alert-banner.jpg', // Large banner image
+      silent: silent || false,
+      timestamp: timestamp || Date.now(),
+      color: color || '#E53935', // Brand color for the notification
+      data: data || { 
+        url: '/',
+        importance: 'high',
+        category: 'environmental',
+        // You can include styling data here if your service worker uses it
+        style: {
+          type: 'banner',
+          backgroundColor: '#E53935',
+          textColor: '#FFFFFF',
+          borderRadius: '8px'
+        }
+      }
     });
 
     const subs = getSubscriptions();
