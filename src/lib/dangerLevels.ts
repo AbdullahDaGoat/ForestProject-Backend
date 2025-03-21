@@ -383,171 +383,213 @@ function adjustSeverityForLandscape(
    PART 5) MAIN SCORING FUNCTION
    ========================================= */
 
-function computeRiskFromHistoryAndRealTime(
-  env: EnvironmentalData,
-  fires: HistoricalFireRecord[],
-  maxRadius: number
-): number {
-  let historicalScore = 0;
-  for (const fire of fires) {
-    const dist = calculateDistance(
-      env.location.lat,
-      env.location.lng,
-      fire.location.latitude,
-      fire.location.longitude
-    );
-
-    const recencyFactor = getRecencyFactor(fire.date);
-    const causeFactor = getCauseFactor(fire.cause);
-    const seasonalityFactor = getSeasonalityFactor(
-      fire.date,
-      fire.location.latitude,
-      fire.location.longitude
-    );
-    const distanceFactor = getDistanceWeight(dist, maxRadius);
-
-    const yearsAgo = new Date().getFullYear() - new Date(fire.date).getFullYear();
-    const terrainType: 'grassland' | 'forest' | 'unknown' = 'unknown';
-    const severityValue = adjustSeverityForLandscape(fire.severity, yearsAgo, terrainType);
-
-    const areaFactor = fire.area_burned > 500 ? 1.5 : 1.0;
-
-    const fireScore =
-      severityValue *
-      areaFactor *
-      recencyFactor *
-      causeFactor *
-      seasonalityFactor *
-      distanceFactor;
-
-    historicalScore += fireScore;
-  }
-
-  const consecutivePenalty = getConsecutiveYearPenalty(fires);
-  const overlapPenalty = getOverlappingFiresPenalty(fires);
-  const frequencyScore = Math.min(fires.length, 5);
-
-  let total = historicalScore + consecutivePenalty + overlapPenalty + frequencyScore;
-
-  // Real-time environment factors
-  if (env.temperature >= 45) total += 3;
-  else if (env.temperature >= 35) total += 2;
-  else if (env.temperature >= 25) total += 1;
-
-  if (env.airQuality !== undefined) {
-    if (env.airQuality >= 200) total += 2;
-    else if (env.airQuality >= 150) total += 1.5;
-    else if (env.airQuality >= 100) total += 1;
-  }
-
-  if (env.drynessIndex !== undefined) {
-    if (env.drynessIndex >= 80) total += 2;
-    else if (env.drynessIndex >= 60) total += 1;
-  }
-
-  if (env.humidity !== undefined && env.humidity < 20) {
-    total += 1;
-  }
-  if (env.windSpeed !== undefined && env.windSpeed > 40) {
-    total += 1;
-  }
-  if (env.timeOfDay !== undefined) {
-    // midday dryness
-    if (env.timeOfDay >= 13 && env.timeOfDay <= 17) {
-      total += 0.5;
+   function computeRiskFromHistoryAndRealTime(
+    env: EnvironmentalData,
+    fires: HistoricalFireRecord[],
+    maxRadius: number
+  ): number {
+    let historicalScore = 0;
+    for (const fire of fires) {
+      const dist = calculateDistance(
+        env.location.lat,
+        env.location.lng,
+        fire.location.latitude,
+        fire.location.longitude
+      );
+  
+      const recencyFactor = getRecencyFactor(fire.date);
+      const causeFactor = getCauseFactor(fire.cause);
+      const seasonalityFactor = getSeasonalityFactor(
+        fire.date,
+        fire.location.latitude,
+        fire.location.longitude
+      );
+      const distanceFactor = getDistanceWeight(dist, maxRadius);
+  
+      const yearsAgo = new Date().getFullYear() - new Date(fire.date).getFullYear();
+      const terrainType: 'grassland' | 'forest' | 'unknown' = 'unknown';
+      const severityValue = adjustSeverityForLandscape(fire.severity, yearsAgo, terrainType);
+  
+      const areaFactor = fire.area_burned > 500 ? 1.5 : 1.0;
+  
+      const fireScore =
+        severityValue *
+        areaFactor *
+        recencyFactor *
+        causeFactor *
+        seasonalityFactor *
+        distanceFactor;
+  
+      historicalScore += fireScore;
     }
+  
+    const consecutivePenalty = getConsecutiveYearPenalty(fires);
+    const overlapPenalty = getOverlappingFiresPenalty(fires);
+    const frequencyScore = Math.min(fires.length, 5);
+  
+    let total = historicalScore + consecutivePenalty + overlapPenalty + frequencyScore;
+  
+    // IMPROVED: Real-time environment factors with more aggressive scaling for extreme conditions
+    // Temperature has a much stronger impact on the score
+    if (env.temperature >= 60) total += 20;       // Extreme temperatures (>60°C) massively increase risk
+    else if (env.temperature >= 45) total += 10;  // Very high temperatures significantly increase risk
+    else if (env.temperature >= 35) total += 5;   // High temperatures increase risk
+    else if (env.temperature >= 25) total += 2;   // Medium temperatures slightly increase risk
+  
+    if (env.airQuality !== undefined) {
+      if (env.airQuality >= 300) total += 5;      // Extreme AQI
+      else if (env.airQuality >= 200) total += 3; // Very high AQI
+      else if (env.airQuality >= 150) total += 2; // High AQI
+      else if (env.airQuality >= 100) total += 1; // Medium AQI
+    }
+  
+    if (env.drynessIndex !== undefined) {
+      if (env.drynessIndex >= 90) total += 8;     // Extremely dry conditions
+      else if (env.drynessIndex >= 80) total += 5;
+      else if (env.drynessIndex >= 60) total += 2;
+    }
+  
+    // Humidity is inversely proportional to risk
+    if (env.humidity !== undefined) {
+      if (env.humidity < 10) total += 6;          // Extremely dry air
+      else if (env.humidity < 20) total += 3;     // Very dry air
+      else if (env.humidity < 30) total += 1;     // Dry air
+    }
+  
+    // Wind speeds significantly affect fire spread
+    if (env.windSpeed !== undefined) {
+      if (env.windSpeed > 60) total += 8;         // Extremely high winds
+      else if (env.windSpeed > 40) total += 4;    // Very high winds
+      else if (env.windSpeed > 25) total += 2;    // High winds
+    }
+  
+    if (env.timeOfDay !== undefined) {
+      // Midday dryness
+      if (env.timeOfDay >= 13 && env.timeOfDay <= 17) {
+        total += 1;
+      }
+    }
+  
+    return total;
   }
-
-  return total;
-}
 
 /* =========================================
    PART 6) getWildfireRisk ENTRY POINT
    (with adaptive radius & optional active-fire fetch)
    ========================================= */
 
-export async function getWildfireRisk(
-  env: EnvironmentalData
-): Promise<{ riskLevel: string; riskExplanation: string }> {
-  loadHistoricalWildfireData();
-
-  // Adaptive radius
-  let radius = 50;
-  const quickCandidate = historicalData.filter((f) => {
-    const dist = calculateDistance(
-      env.location.lat,
-      env.location.lng,
-      f.location.latitude,
-      f.location.longitude
-    );
-    return dist <= 50;
-  });
-
-  if (quickCandidate.length > 20) {
-    radius = 30;
-  } else if (quickCandidate.length < 5) {
-    radius = 75;
-  }
-
-  const candidateFires = historicalData.filter((fire) => {
-    const dist = calculateDistance(
-      env.location.lat,
-      env.location.lng,
-      fire.location.latitude,
-      fire.location.longitude
-    );
-    return dist <= radius;
-  });
-
-  candidateFires.sort((a, b) => {
-    const distA = calculateDistance(
-      env.location.lat,
-      env.location.lng,
-      a.location.latitude,
-      a.location.longitude
-    );
-    const distB = calculateDistance(
-      env.location.lat,
-      env.location.lng,
-      b.location.latitude,
-      b.location.longitude
-    );
-    return distA - distB;
-  });
-  const nearestFires = candidateFires.slice(0, 15);
-
-  let totalScore = computeRiskFromHistoryAndRealTime(env, nearestFires, radius);
-
-  let activeFireNote = '';
-  if (ACTIVE_FIRE_URL) {
-    const penalty = await getActiveFirePenalty(env);
-    if (penalty > 0) {
-      totalScore += penalty;
-      activeFireNote = `\nActive Fire Penalty = ${penalty}. Location is near/inside an active perimeter.`;
+   export async function getWildfireRisk(
+    env: EnvironmentalData
+  ): Promise<{ riskLevel: string; riskExplanation: string }> {
+    // First, assess the basic environmental danger level
+    const basicAssessment = assessDangerLevel(env);
+    
+    // Load the historical wildfire data
+    loadHistoricalWildfireData();
+  
+    // Adaptive radius
+    let radius = 50;
+    const quickCandidate = historicalData.filter((f) => {
+      const dist = calculateDistance(
+        env.location.lat,
+        env.location.lng,
+        f.location.latitude,
+        f.location.longitude
+      );
+      return dist <= 50;
+    });
+  
+    if (quickCandidate.length > 20) {
+      radius = 30;
+    } else if (quickCandidate.length < 5) {
+      radius = 75;
     }
+  
+    const candidateFires = historicalData.filter((fire) => {
+      const dist = calculateDistance(
+        env.location.lat,
+        env.location.lng,
+        fire.location.latitude,
+        fire.location.longitude
+      );
+      return dist <= radius;
+    });
+  
+    candidateFires.sort((a, b) => {
+      const distA = calculateDistance(
+        env.location.lat,
+        env.location.lng,
+        a.location.latitude,
+        a.location.longitude
+      );
+      const distB = calculateDistance(
+        env.location.lat,
+        env.location.lng,
+        b.location.latitude,
+        b.location.longitude
+      );
+      return distA - distB;
+    });
+    const nearestFires = candidateFires.slice(0, 15);
+  
+    let totalScore = computeRiskFromHistoryAndRealTime(env, nearestFires, radius);
+  
+    let activeFireNote = '';
+    if (ACTIVE_FIRE_URL) {
+      const penalty = await getActiveFirePenalty(env);
+      if (penalty > 0) {
+        totalScore += penalty;
+        activeFireNote = `\nActive Fire Penalty = ${penalty}. Location is near/inside an active perimeter.`;
+      }
+    }
+  
+    // Determine risk level based on score AND basic assessment
+    // This ensures extreme temperatures always result in at least high risk
+    let riskLevel = determineRiskLevel(totalScore, basicAssessment.level);
+  
+    const riskExplanation = `
+      Adaptive Radius: ${radius} km
+      Found ${nearestFires.length} fires within radius
+      Basic Assessment: ${basicAssessment.level} (${basicAssessment.description})
+      Final Score: ${totalScore.toFixed(2)} => ${riskLevel}.${activeFireNote}
+    `;
+  
+    return { riskLevel, riskExplanation };
   }
 
-  let riskLevel = 'no risk';
-  if (totalScore >= 35) {
-    riskLevel = 'extreme';
-  } else if (totalScore >= 20) {
-    riskLevel = 'very high';
-  } else if (totalScore >= 12) {
-    riskLevel = 'high';
-  } else if (totalScore >= 6) {
-    riskLevel = 'medium';
-  } else if (totalScore >= 2) {
-    riskLevel = 'low';
+  function determineRiskLevel(totalScore: number, basicAssessmentLevel: DangerLevel): DangerLevel {
+    // First determine score-based risk level
+    let scoreBasedRisk: DangerLevel = 'no risk';
+    if (totalScore >= 35) {
+      scoreBasedRisk = 'extreme';
+    } else if (totalScore >= 20) {
+      scoreBasedRisk = 'very high';
+    } else if (totalScore >= 12) {
+      scoreBasedRisk = 'high';
+    } else if (totalScore >= 6) {
+      scoreBasedRisk = 'medium';
+    } else if (totalScore >= 2) {
+      scoreBasedRisk = 'low';
+    }
+  
+    // Define danger level hierarchy for comparison
+    const dangerLevels: DangerLevel[] = [
+      'no risk',
+      'normal',
+      'low',
+      'medium',
+      'high',
+      'very high',
+      'extreme',
+    ];
+    
+    // Return the higher of the two risk levels
+    const scoreBasedIndex = dangerLevels.indexOf(scoreBasedRisk);
+    const basicAssessmentIndex = dangerLevels.indexOf(basicAssessmentLevel);
+    
+    return dangerLevels[Math.max(scoreBasedIndex, basicAssessmentIndex)];
   }
-
-  const riskExplanation = `
-    Adaptive Radius: ${radius} km
-    Found ${nearestFires.length} fires within radius
-    Final Score: ${totalScore.toFixed(2)} => ${riskLevel}.${activeFireNote}
-  `;
-
-  return { riskLevel, riskExplanation };
-}
+  
 
 /* =========================================
    PART 7) Active-Fire GeoJSON Check
