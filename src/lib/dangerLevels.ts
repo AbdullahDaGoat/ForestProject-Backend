@@ -2,7 +2,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { calculateDistance } from './utils';
-import fetch from 'node-fetch'; // Make sure you install `npm i node-fetch` if you want to fetch
 
 export type DangerLevel =
   | 'extreme'
