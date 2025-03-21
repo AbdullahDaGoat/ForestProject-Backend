@@ -38,8 +38,32 @@ router.saveSubscription.post('/', async (req: Request, res: Response) => {
 // POST /trigger-notification
 router.triggerNotification.post('/', async (req: Request, res: Response) => {
   try {
-    const { title, body, data } = req.body;
-    const payload = JSON.stringify({ title, body, data });
+    // Destructure the fields from the request body.
+    // These fields will be used to build the payload sent to clients.
+    const {
+      title,
+      body,
+      data,
+      icon,
+      badge,
+      tag,
+      requireInteraction,
+      vibrate,
+      actions
+    } = req.body;
+
+    // Build the payload using defaults for any missing fields.
+    const payload = JSON.stringify({
+      title: title || 'Environmental Alert',
+      body: body || 'New environmental alert detected!',
+      icon: icon || '/icons/icon-192x192.png',
+      badge: badge || '/icons/icon-72x72.png',
+      tag: tag || 'environmental-alert',
+      requireInteraction: requireInteraction !== undefined ? requireInteraction : true,
+      vibrate: vibrate || [100, 50, 100, 50, 100, 50, 200],
+      actions: actions || [{ action: 'view', title: 'View Details' }],
+      data: data || { url: '/' }
+    });
 
     const subs = getSubscriptions();
     const sendPromises = subs.map((sub) =>
