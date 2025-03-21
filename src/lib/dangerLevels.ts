@@ -221,6 +221,8 @@ export function loadHistoricalWildfireData(): void {
     'wildfire_data_part1.json',
     'wildfire_data_part2.json',
     'wildfire_data_2.json',
+    'wildfire_data_5part_2.json',
+    'wildfire_data_5part_1.json'
   ];
 
   for (const fileName of files) {
