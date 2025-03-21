@@ -59,17 +59,17 @@ router.triggerNotification.post('/', async (req: Request, res: Response) => {
     const payload = JSON.stringify({
       title: title || 'Environmental Alert',
       body: body || 'New environmental alert detected!',
-      icon: icon || '/icons/icon-192x192.png',
-      badge: badge || '/icons/badge-72x72.png',
+      icon: icon || 'https://web-production-e7596.up.railway.app/icons/icon-192x192.png',
+      badge: badge || 'https://web-production-e7596.up.railway.app/icons/badge-72x72.png',
       tag: tag || 'environmental-alert',
       requireInteraction: requireInteraction !== undefined ? requireInteraction : true,
       vibrate: vibrate || [100, 50, 100, 50, 100, 50, 200],
       actions: actions || [
-        { action: 'view', title: 'View Details', icon: '/icons/view-icon.png' },
-        { action: 'dismiss', title: 'Dismiss', icon: '/icons/dismiss-icon.png' }
+        { action: 'view', title: 'View Details', icon: 'https://web-production-e7596.up.railway.app/icons/view-icon.png' },
+        { action: 'dismiss', title: 'Dismiss', icon: 'https://web-production-e7596.up.railway.app/icons/dismiss-icon.png' }
       ],
       // Enhanced properties for more beautiful notifications
-      image: image || '/images/alert-banner.jpg', // Large banner image
+      image: image || 'https://web-production-e7596.up.railway.app/icons/alert-banner.jpg', // Large banner image
       silent: silent || false,
       timestamp: timestamp || Date.now(),
       color: color || '#E53935', // Brand color for the notification
